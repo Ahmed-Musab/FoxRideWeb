@@ -13,6 +13,7 @@ import { toast } from "react-hot-toast";
 const BookingManagementEmployee = () => {
 
   const [booking, setBooking] = useState(false);
+  const [hideBooking, setHideBooking] = useState([]);
   const queryClient = useQueryClient();
 
   const bookingSchema = yup.object().shape({
@@ -58,37 +59,21 @@ const BookingManagementEmployee = () => {
 
   const isMultipleDay = watch("multipleDay");
 
-  const getEmployees = async () => {
+  const getBookings = async () => {
     try {
-      const response = await axios.get("/api/employee/getEmployees");
-      return response.data.employees;
+      const response = await axios.get("/api/employee/getBookingByEmail");
+      return response.data.booking;
     }
     catch (error) {
-      toast.error(error.response?.data?.message || "Failed to fetch employees");
+      toast.error(error.response?.data?.message || "Failed to fetch bookings");
       return [];
     }
   }
 
-  const { data: employees } = useQuery({
-    queryKey: ["employees"],
-    queryFn: getEmployees
-  });
-
-const getBookings = async () => {
-  try {
-    const response = await axios.get("/api/employee/getBookingByEmail");
-    return response.data.booking;
-  }
-  catch (error) {
-    toast.error(error.response?.data?.message || "Failed to fetch bookings");
-    return [];
-  }
-}
-
   const { data: bookings, isLoading: bookingsLoading, error: bookingsError } = useQuery({
     queryKey: ["bookings"],
     queryFn: getBookings
-  }); 
+  });
 
   const createBookingMutation = useMutation({
     mutationFn: async (data) => {
@@ -138,8 +123,8 @@ const getBookings = async () => {
             <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Booking Management</h1>
             <p className="text-sm text-gray-500 mt-2">Create and monitor vehicle booking logs, routing options, and driver assignments.</p>
           </div>
-          <button 
-            onClick={() => setBooking(true)} 
+          <button
+            onClick={() => setBooking(true)}
             className="flex items-center gap-2 px-5 py-2.5 bg-[#243b55] text-white rounded-xl hover:bg-[#243b55]/95 shadow-md shadow-[#243b55]/10 font-semibold transition cursor-pointer"
           >
             Create Booking
@@ -181,12 +166,12 @@ const getBookings = async () => {
 
           {bookings && Array.isArray(bookings) && bookings.length > 0 && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {bookings.map((b) => {
+              {bookings.filter(b => !hideBooking.includes(b._id)).map((b) => {
                 const startD = b.date ? new Date(b.date).toLocaleDateString() : "";
                 const endD = b.toDate ? new Date(b.toDate).toLocaleDateString() : "";
                 return (
-                  <div 
-                    key={b._id} 
+                  <div
+                    key={b._id}
                     className="bg-white border border-gray-200 rounded-2xl p-6 flex flex-col justify-between transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md"
                   >
                     <div>
@@ -200,13 +185,12 @@ const getBookings = async () => {
                             Booked for: {b.bookingFor}
                           </p>
                         </div>
-                        <span className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border flex-shrink-0 ${
-                          b.bookingNature === "Pickup" 
-                            ? "bg-indigo-50 border-indigo-100 text-indigo-700" 
-                            : b.bookingNature === "Dropoff" 
-                            ? "bg-amber-50 border-amber-100 text-amber-700" 
-                            : "bg-gray-50 border-gray-150 text-gray-700"
-                        }`}>
+                        <span className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border flex-shrink-0 ${b.bookingNature === "Pickup"
+                            ? "bg-indigo-50 border-indigo-100 text-indigo-700"
+                            : b.bookingNature === "Dropoff"
+                              ? "bg-amber-50 border-amber-100 text-amber-700"
+                              : "bg-gray-50 border-gray-150 text-gray-700"
+                          }`}>
                           {b.bookingNature}
                         </span>
                       </div>
@@ -263,7 +247,7 @@ const getBookings = async () => {
                           </span>
                         )}
                       </div>
-                      
+
                       {b.comments && (
                         <p className="text-[11px] text-gray-400 italic mt-3 bg-gray-50/50 p-2 rounded-lg border border-gray-100">
                           "{b.comments}"
@@ -274,12 +258,20 @@ const getBookings = async () => {
                         Status: {b.status}
                       </p>
 
-                      <button 
+                      {b.status === "Completed" ?
+                        <button onClick={() => setHideBooking((prev) => [...prev, b._id])}
+                          className={"mt-3 px-3 py-1.5 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 font-semibold text-xs cursor-pointer"}
+                        >
+                          Hide Booking
+                        </button>
+                        :
+                        <button 
                         onClick={() => cancelBookingMutation.mutate({ bookingId: b?._id })}
                         className="mt-3 px-3 py-1.5 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 font-semibold text-xs cursor-pointer"
                       >
                         Cancel Booking
                       </button>
+                      }
                     </div>
                   </div>
                 );
@@ -292,12 +284,12 @@ const getBookings = async () => {
         {booking && (
           <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
             <div className="bg-white rounded-2xl shadow-2xl max-w-6xl w-full overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-200 border border-gray-150">
-              
+
               {/* Header */}
               <div className="bg-[#243b55] px-6 py-4 flex items-center justify-between text-white">
                 <h3 className="text-base font-semibold tracking-wide">Create Booking</h3>
-                <button 
-                  onClick={() => { setBooking(false); reset(); }} 
+                <button
+                  onClick={() => { setBooking(false); reset(); }}
                   className="text-gray-300 hover:text-white transition cursor-pointer"
                 >
                   <X className="w-5 h-5" />
@@ -307,7 +299,7 @@ const getBookings = async () => {
               {/* Form Content */}
               <form onSubmit={handleSubmit(onSubmit)} className="p-8 space-y-6 overflow-y-auto max-h-[80vh]">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-5">
-                  
+
                   {/* Left Column */}
                   <div className="space-y-4">
                     {/* Booking For */}
@@ -315,19 +307,19 @@ const getBookings = async () => {
                       <span className="text-xs font-semibold text-gray-600">Booking For</span>
                       <div className="flex gap-4">
                         <label className="inline-flex items-center text-xs text-gray-700 cursor-pointer">
-                          <input 
-                            type="radio" 
-                            value="Employee" 
-                            className="mr-2 text-[#243b55] focus:ring-[#243b55]" 
+                          <input
+                            type="radio"
+                            value="Employee"
+                            className="mr-2 text-[#243b55] focus:ring-[#243b55]"
                             {...register("bookingFor")}
                           />
                           Employee
                         </label>
                         <label className="inline-flex items-center text-xs text-gray-700 cursor-pointer">
-                          <input 
-                            type="radio" 
-                            value="Guest" 
-                            className="mr-2 text-[#243b55] focus:ring-[#243b55]" 
+                          <input
+                            type="radio"
+                            value="Guest"
+                            className="mr-2 text-[#243b55] focus:ring-[#243b55]"
                             {...register("bookingFor")}
                           />
                           Guest
@@ -342,8 +334,8 @@ const getBookings = async () => {
                         Date
                       </label>
                       <div className="relative">
-                        <input 
-                          type="date" 
+                        <input
+                          type="date"
                           className="w-full border border-gray-200 rounded-xl px-3.5 py-2 text-xs bg-white focus:outline-none focus:border-[#243b55] transition text-gray-700"
                           {...register("date")}
                         />
@@ -354,8 +346,8 @@ const getBookings = async () => {
                     {/* Multiple Day Booking */}
                     <div className="flex items-center py-1">
                       <label className="inline-flex items-center text-xs font-semibold text-gray-600 cursor-pointer">
-                        <input 
-                          type="checkbox" 
+                        <input
+                          type="checkbox"
                           className="rounded text-[#243b55] focus:ring-[#243b55] mr-2.5 w-4 h-4 border-gray-200"
                           {...register("multipleDay")}
                         />
@@ -366,12 +358,11 @@ const getBookings = async () => {
                     {/* To Date */}
                     <div>
                       <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">To Date</label>
-                      <input 
-                        type="date" 
+                      <input
+                        type="date"
                         disabled={!isMultipleDay}
-                        className={`w-full border border-gray-200 rounded-xl px-3.5 py-2 text-xs transition text-gray-700 focus:outline-none ${
-                          isMultipleDay ? "bg-white focus:border-[#243b55]" : "bg-gray-100 cursor-not-allowed"
-                        }`}
+                        className={`w-full border border-gray-200 rounded-xl px-3.5 py-2 text-xs transition text-gray-700 focus:outline-none ${isMultipleDay ? "bg-white focus:border-[#243b55]" : "bg-gray-100 cursor-not-allowed"
+                          }`}
                         {...register("toDate")}
                       />
                       {isMultipleDay && errors.toDate && <p className="text-rose-500 text-[10px] mt-0.5">{errors.toDate.message}</p>}
@@ -380,8 +371,8 @@ const getBookings = async () => {
                     {/* Self Driving */}
                     <div className="flex items-center py-1">
                       <label className="inline-flex items-center text-xs font-semibold text-gray-600 cursor-pointer">
-                        <input 
-                          type="checkbox" 
+                        <input
+                          type="checkbox"
                           className="rounded text-[#243b55] focus:ring-[#243b55] mr-2.5 w-4 h-4 border-gray-200"
                           {...register("selfDriving")}
                         />
@@ -392,8 +383,8 @@ const getBookings = async () => {
                     {/* Rented Car Required */}
                     <div className="flex items-center py-1">
                       <label className="inline-flex items-center text-xs font-semibold text-gray-600 cursor-pointer">
-                        <input 
-                          type="checkbox" 
+                        <input
+                          type="checkbox"
                           className="rounded text-[#243b55] focus:ring-[#243b55] mr-2.5 w-4 h-4 border-gray-200"
                           {...register("rentedCar")}
                         />
@@ -406,8 +397,8 @@ const getBookings = async () => {
                       <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">
                         Purpose of Booking
                       </label>
-                      <input 
-                        type="text" 
+                      <input
+                        type="text"
                         placeholder="Specify booking reason"
                         className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-xs bg-white focus:outline-none focus:border-[#243b55] transition text-gray-700"
                         {...register("purpose")}
@@ -420,28 +411,28 @@ const getBookings = async () => {
                       <span className="text-xs font-semibold text-gray-600">Booking Nature</span>
                       <div className="flex gap-4">
                         <label className="inline-flex items-center text-xs text-gray-700 cursor-pointer">
-                          <input 
-                            type="radio" 
-                            value="Pickup" 
-                            className="mr-2 text-[#243b55] focus:ring-[#243b55]" 
+                          <input
+                            type="radio"
+                            value="Pickup"
+                            className="mr-2 text-[#243b55] focus:ring-[#243b55]"
                             {...register("bookingNature")}
                           />
                           Pickup
                         </label>
                         <label className="inline-flex items-center text-xs text-gray-700 cursor-pointer">
-                          <input 
-                            type="radio" 
-                            value="Dropoff" 
-                            className="mr-2 text-[#243b55] focus:ring-[#243b55]" 
+                          <input
+                            type="radio"
+                            value="Dropoff"
+                            className="mr-2 text-[#243b55] focus:ring-[#243b55]"
                             {...register("bookingNature")}
                           />
                           Dropoff
                         </label>
                         <label className="inline-flex items-center text-xs text-gray-700 cursor-pointer">
-                          <input 
-                            type="radio" 
-                            value="N/A" 
-                            className="mr-2 text-[#243b55] focus:ring-[#243b55]" 
+                          <input
+                            type="radio"
+                            value="N/A"
+                            className="mr-2 text-[#243b55] focus:ring-[#243b55]"
                             {...register("bookingNature")}
                           />
                           N/A
@@ -454,19 +445,19 @@ const getBookings = async () => {
                       <span className="text-xs font-semibold text-gray-600">Location Type</span>
                       <div className="flex gap-4">
                         <label className="inline-flex items-center text-xs text-gray-700 cursor-pointer">
-                          <input 
-                            type="radio" 
-                            value="Single Location" 
-                            className="mr-2 text-[#243b55] focus:ring-[#243b55]" 
+                          <input
+                            type="radio"
+                            value="Single Location"
+                            className="mr-2 text-[#243b55] focus:ring-[#243b55]"
                             {...register("locationType")}
                           />
                           Single Location
                         </label>
                         <label className="inline-flex items-center text-xs text-gray-700 cursor-pointer">
-                          <input 
-                            type="radio" 
-                            value="Multiple Locations" 
-                            className="mr-2 text-[#243b55] focus:ring-[#243b55]" 
+                          <input
+                            type="radio"
+                            value="Multiple Locations"
+                            className="mr-2 text-[#243b55] focus:ring-[#243b55]"
                             {...register("locationType")}
                           />
                           Multiple Locations
@@ -477,15 +468,15 @@ const getBookings = async () => {
                     {/* Department */}
                     <div>
                       <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Department</label>
-                      <select 
+                      <select
                         className="w-full border border-gray-200 rounded-xl px-3.5 py-2 text-xs bg-white focus:outline-none focus:border-[#243b55] transition text-gray-700"
                         {...register("department")}
                       >
                         <option value="">--Please Select--</option>
-                        <option value="ops">Operations</option>
-                        <option value="logs">Logistics</option>
-                        <option value="sales">Sales</option>
-                        <option value="hr">Human Resources</option>
+                        <option value="Operations">Operations</option>
+                        <option value="Logistics">Logistics</option>
+                        <option value="Sales">Sales</option>
+                        <option value="Human Resource">Human Resources</option>
                       </select>
                       {errors.department && <p className="text-rose-500 text-[10px] mt-0.5">{errors.department.message}</p>}
                     </div>
@@ -495,8 +486,8 @@ const getBookings = async () => {
                       <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">
                         Location
                       </label>
-                      <input 
-                        type="text" 
+                      <input
+                        type="text"
                         placeholder="Enter location detail"
                         className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-xs bg-white focus:outline-none focus:border-[#243b55] transition text-gray-700"
                         {...register("location")}
@@ -512,8 +503,8 @@ const getBookings = async () => {
                     <div className="flex items-center justify-between py-1.5">
                       <span className="text-xs font-semibold text-gray-600">Allowance Staff</span>
                       <label className="inline-flex items-center cursor-pointer">
-                        <input 
-                          type="checkbox" 
+                        <input
+                          type="checkbox"
                           className="rounded text-[#243b55] focus:ring-[#243b55] w-4 h-4 border-gray-200"
                           {...register("allowanceStaff")}
                         />
@@ -525,8 +516,8 @@ const getBookings = async () => {
                       <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">
                         Time
                       </label>
-                      <input 
-                        type="time" 
+                      <input
+                        type="time"
                         className="w-full border border-gray-200 rounded-xl px-3.5 py-2 text-xs bg-white focus:outline-none focus:border-[#243b55] transition text-gray-700"
                         {...register("time")}
                       />
@@ -541,12 +532,11 @@ const getBookings = async () => {
                       <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">
                         Time {isMultipleDay && <span className="text-rose-500">*</span>}
                       </label>
-                      <input 
-                        type="time" 
+                      <input
+                        type="time"
                         disabled={!isMultipleDay}
-                        className={`w-full border border-gray-200 rounded-xl px-3.5 py-2 text-xs transition text-gray-700 focus:outline-none ${
-                          isMultipleDay ? "bg-white focus:border-[#243b55]" : "bg-gray-100 cursor-not-allowed"
-                        }`}
+                        className={`w-full border border-gray-200 rounded-xl px-3.5 py-2 text-xs transition text-gray-700 focus:outline-none ${isMultipleDay ? "bg-white focus:border-[#243b55]" : "bg-gray-100 cursor-not-allowed"
+                          }`}
                         {...register("toTime")}
                       />
                       {isMultipleDay && errors.toTime && <p className="text-rose-500 text-[10px] mt-0.5">{errors.toTime.message}</p>}
@@ -558,8 +548,8 @@ const getBookings = async () => {
                     {/* Comments */}
                     <div>
                       <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Comments</label>
-                      <input 
-                        type="text" 
+                      <input
+                        type="text"
                         placeholder="Add additional instructions"
                         className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-xs bg-white focus:outline-none focus:border-[#243b55] transition text-gray-700"
                         {...register("comments")}
@@ -574,15 +564,15 @@ const getBookings = async () => {
 
                 {/* Footer Buttons */}
                 <div className="flex gap-3 justify-end pt-6 border-t border-gray-100 mt-8">
-                  <button 
-                    type="button" 
-                    onClick={() => { setBooking(false); reset(); }} 
+                  <button
+                    type="button"
+                    onClick={() => { setBooking(false); reset(); }}
                     className="py-2 px-6 border border-gray-200 text-gray-700 hover:bg-gray-50 text-xs font-semibold rounded-xl transition cursor-pointer"
                   >
                     Cancel
                   </button>
-                  <button 
-                    type="submit" 
+                  <button
+                    type="submit"
                     className="py-2 px-6 bg-[#243b55] text-white hover:bg-[#243b55]/90 text-xs font-semibold rounded-xl transition cursor-pointer"
                   >
                     Create Booking

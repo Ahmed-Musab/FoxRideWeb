@@ -15,7 +15,8 @@ import {
   ShieldCheck,
   LogOut,
   ChevronsRight,
-  ChevronsLeft
+  ChevronsLeft,
+  Wrench
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -30,7 +31,7 @@ const Sidebar = () => {
   useEffect(() => {
     const parent = sidebarRef.current?.parentElement;
     if (parent && parent.tagName === 'ASIDE') {
-      parent.classList.add('transition-all', 'duration-300', 'h-screen', 'sticky', 'top-0');
+      parent.classList.add('transition-all', 'duration-300', 'h-screen', 'sticky', 'top-0', 'overflow-y-auto', 'overscroll-contain');
       if (isMinimized) {
         parent.classList.remove('w-64', 'p-6');
         parent.classList.add('w-20', 'p-4');
@@ -66,9 +67,19 @@ const Sidebar = () => {
         icon: CalendarCheck,
       },
       {
+        name: "Complaint Management",
+        href: "/pages/complaintManagementAdminPage",
+        icon: Bell,
+      },
+      {
         name: "Alerts",
         href: "/pages/alertManagementAdminPage",
         icon: Bell,
+      },
+      {
+        name: "Work Order Management",
+        href: "/pages/workOrderManagementAdminPage",
+        icon: Wrench,
       },
       {
         name: "Roles",
@@ -94,6 +105,16 @@ const Sidebar = () => {
         name: "Booking Management",
         href: "/pages/bookingManagementEmployeePage",
         icon: CalendarCheck,
+      },
+      {
+        name: "Complaint Management",
+        href: "/pages/complaintManagementEmployeePage",
+        icon: Bell,
+      },
+      {
+        name: "Work Order Management",
+        href: "/pages/workOrderManagementEmployeePage",
+        icon: Wrench,
       },
       {
         name: "Alerts",

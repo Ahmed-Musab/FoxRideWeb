@@ -43,33 +43,16 @@ const VehicleManagementAdmin = () => {
     queryFn: getVehicles
   });
 
-  const getDrivers = async () => {
-    try {
-      const response = await axios.get("/api/driver/getDrivers");
-      return response.data.drivers;
-    }
-    catch (error) {
-      console.log(error);
-      return { error: error.message, status: 500 };
-    }
-  }
-
-  const { data: drivers, isLoading: driversLoading, error: driversError } = useQuery({
-    queryKey: ["drivers"],
-    queryFn: getDrivers
-  });
-
   const schema = yup.object().shape({
-    vehicleImage: yup.string().required("Vehicle Image is required"),
+    vehicleImage: yup.string(),
     vrn: yup.number().required("VRN is required"),
     registerCity: yup.string().required("Register City is required"),
-    driver: yup.string().required("Driver is required"),
     capDate: yup.string().required("Cap Date is required"),
     vehicleType: yup.string().required("Vehicle Type is required"),
     department: yup.string().required("Department is required"),
     chassisNumber: yup.string().required("Chasis No is required"),
     color: yup.string().required("Color is required"),
-    currentMileage: yup.string().required("Mileage is required"),
+    currentMileage: yup.number().required("Mileage is required"),
     vehiclePrice: yup.number().required("Price is required"),
     routePermitExpiry: yup.string().required("Route Permit Expiry is required"),
     seatingCapacity: yup.string().required("Seat Capacity is required"),
@@ -83,14 +66,42 @@ const VehicleManagementAdmin = () => {
     engineNumber: yup.string().required("Engine Number is required"),
     model: yup.string().required("Model is required"),
     fuelTankCapacity: yup.string().required("Fuel Capacity is required"),
-    document: yup.string().required("Document is required"),
+    docUpload: yup.string(),
     exciseTaxExpiry: yup.string().required("Excise Tax Expiry is required"),
     insuranceExpiry: yup.string().required("Insurance Expiry is required"),
     vehicleStatus: yup.string().required("Vehicle Status is required"),
   });
 
-  const { register, handleSubmit, reset, formState: { errors } } = useForm({
-    resolver: yupResolver(schema)
+  const { register, setValue, handleSubmit, reset, formState: { errors } } = useForm({
+    resolver: yupResolver(schema),
+    defaultValues: {
+      vehicleImage: "",
+      vrn: "",
+      registerCity: "",
+      capDate: "",
+      vehicleType: "",
+      department: "",
+      chassisNumber: "",
+      color: "",
+      currentMileage: "",
+      vehiclePrice: "",
+      routePermitExpiry: "",
+      seatingCapacity: "",
+      remarks: "",
+      assetNumber: "",
+      fileNumber: "",
+      city: "",
+      vehicleMake: "",
+      alternateDate: "",
+      region: "",
+      engineNumber: "",
+      model: "",
+      fuelTankCapacity: "",
+      docUpload: "",
+      exciseTaxExpiry: "",
+      insuranceExpiry: "",
+      vehicleStatus: ""
+    }
   });
 
   const addVehicleMutation = useMutation({
@@ -123,7 +134,41 @@ const VehicleManagementAdmin = () => {
     addVehicleMutation.mutate(data);
   };
 
-console.log(drivers);
+const handlePhotoUpload = async (e) => {
+  e.preventDefault();
+  try{
+    const file = e.target.files[0];
+    const formData = new FormData();
+    formData.append("image", file);
+    const response = await axios.post("/api/admin/uploadPhoto", formData);
+    setValue("vehicleImage", response.data.imageUrl, {
+      shouldValidate: true
+    });
+    toast.success("Photo uploaded successfully");
+  }
+  catch(error){
+    console.log(error);
+    toast.error(error.response?.data?.message || "Failed to upload photo");
+  }
+}
+
+const handleDocUpload = async (e) => {
+  e.preventDefault();
+  try{
+    const file = e.target.files[0];
+    const formData = new FormData();
+    formData.append("image", file);
+    const response = await axios.post("/api/admin/uploadPhoto", formData);
+    setValue("docUpload", response.data.imageUrl, {
+      shouldValidate: true
+    });
+    toast.success("Document uploaded successfully");
+  }
+  catch(error){
+    console.log(error);
+    toast.error(error.response?.data?.message || "Failed to upload document");
+  }
+}
 
   return (
     <div className="flex min-h-screen bg-gray-50/50">
@@ -183,26 +228,28 @@ console.log(drivers);
 
           {data && Array.isArray(data) && data.length > 0 && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {data.map((vehicle) => {
+              {data?.map((vehicle) => {
                 const isUnderMaintenance = vehicle.vehicleStatus === "maintenance";
                 const isInactive = vehicle.vehicleStatus === "inactive";
                 return (
                   <div 
                     key={vehicle._id} 
-                    className="bg-white border border-gray-200 rounded-2xl p-6 flex flex-col justify-between transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md"
+                    className="bg-white border border-gray-200 rounded-2xl p-6 flex flex-col justify-between transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg hover:border-gray-300/80 group"
                   >
                     <div>
                       {/* Card Header */}
                       <div className="flex justify-between items-start gap-4 mb-4">
                         <div className="min-w-0">
-                          <h3 className="font-bold text-gray-900 text-lg truncate" title={vehicle.VRN}>
-                            {vehicle.VRN}
+                          <h3 className="font-extrabold text-gray-950 text-base" title={vehicle.VRN}>
+                            <span className="bg-[#243b55]/5 text-[#243b55] px-2 py-0.5 rounded border border-[#243b55]/10 text-xs font-mono font-bold tracking-wide">
+                              {vehicle.VRN}
+                            </span>
                           </h3>
-                          <p className="text-xs text-gray-400 font-medium mt-0.5">
+                          <p className="text-xs text-gray-500 font-semibold mt-1">
                             {vehicle.make} - {vehicle.model}
                           </p>
                         </div>
-                        <span className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full border flex-shrink-0 ${
+                        <span className={`text-[9px] font-extrabold uppercase tracking-wider px-2.5 py-1 rounded-full border flex-shrink-0 ${
                           isUnderMaintenance 
                             ? "bg-amber-50 border-amber-100 text-amber-700" 
                             : isInactive 
@@ -213,33 +260,46 @@ console.log(drivers);
                         </span>
                       </div>
 
+                      {/* Image Frame */}
+                      <div className="relative h-40 w-full mb-4 rounded-xl overflow-hidden bg-gray-50 border border-gray-150 flex items-center justify-center">
+                        {vehicle?.vehicleImage ? (
+                          <img 
+                            src={vehicle.vehicleImage} 
+                            alt={`${vehicle.make} ${vehicle.model}`} 
+                            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" 
+                          />
+                        ) : (
+                          <div className="flex flex-col items-center justify-center text-gray-300">
+                            <Car className="w-12 h-12 stroke-[1.5]" />
+                            <span className="text-[9px] font-bold uppercase tracking-wider text-gray-400 mt-2">No Image Uploaded</span>
+                          </div>
+                        )}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/5 via-transparent to-transparent pointer-events-none" />
+                      </div>
+
                       {/* Info Spec Grid */}
-                      <div className="grid grid-cols-2 gap-x-4 gap-y-3 py-4 border-t border-b border-gray-100/60 my-4 text-xs text-gray-600">
+                      <div className="grid grid-cols-2 gap-x-4 gap-y-3 py-4 border-t border-b border-gray-100/60 my-4 text-[11px] text-gray-600 font-medium">
                         <div className="flex items-center gap-2 min-w-0">
-                          <Users className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
-                          <span>Seats: {vehicle.seatCapacity}</span>
+                          <Users className="w-3.5 h-3.5 text-[#243b55]/60 flex-shrink-0" />
+                          <span className="truncate">Seats: <span className="font-bold text-gray-800">{vehicle.seatCapacity}</span></span>
                         </div>
                         <div className="flex items-center gap-2 min-w-0">
-                          <Shield className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
-                          <span>Dept: {vehicle.dept}</span>
+                          <Shield className="w-3.5 h-3.5 text-[#243b55]/60 flex-shrink-0" />
+                          <span className="truncate">Dept: <span className="font-bold text-gray-800">{vehicle.dept}</span></span>
                         </div>
                         <div className="flex items-center gap-2 min-w-0">
-                          <Settings className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
-                          <span>Pool: {vehicle.assignedTo}</span>
+                          <Settings className="w-3.5 h-3.5 text-[#243b55]/60 flex-shrink-0" />
+                          <span className="truncate">Type: <span className="font-bold text-gray-800">{vehicle.vehicleType}</span></span>
                         </div>
                         <div className="flex items-center gap-2 min-w-0">
-                          <Fuel className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
-                          <span>Fuel: {vehicle.fuelCapacity}</span>
-                        </div>
-                        <div className="flex items-center gap-2 min-w-0">
-                          <User className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
-                          <span>Assigned to: {vehicle.assignedTo}</span>
+                          <Fuel className="w-3.5 h-3.5 text-[#243b55]/60 flex-shrink-0" />
+                          <span className="truncate">Fuel: <span className="font-bold text-gray-800">{vehicle.fuelCapacity}</span></span>
                         </div>
                       </div>
 
                       {/* Location metadata */}
-                      <div className="text-xs text-gray-400 flex items-center gap-2 mb-4">
-                        <div className="w-1.5 h-1.5 rounded-full bg-[#243b55]/50" />
+                      <div className="text-[10px] text-gray-400 font-semibold flex items-center gap-2 mb-4">
+                        <div className="w-1.5 h-1.5 rounded-full bg-[#243b55]/40" />
                         <span>Registered in {vehicle.regCity} ({vehicle.city})</span>
                       </div>
                     </div>
@@ -248,9 +308,9 @@ console.log(drivers);
                     <button 
                       onClick={() => { if (confirm(`Are you sure you want to delete vehicle ${vehicle.VRN}?`)) deleteVehicleMutation.mutate(vehicle._id); }}
                       disabled={deleteVehicleMutation.isPending}
-                      className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold text-xs rounded-xl transition cursor-pointer mt-2"
+                      className="w-full flex items-center justify-center gap-2 py-2 px-4 bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold text-xs rounded-xl transition cursor-pointer mt-2"
                     >
-                      <Trash2 className="w-4 h-4" />
+                      <Trash2 className="w-3.5 h-3.5" />
                       Delete Vehicle
                     </button>
                   </div>
@@ -286,17 +346,17 @@ console.log(drivers);
                     <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Upload Vehicle Image</label>
                     <input
                       type="file"
+                      onChange={handlePhotoUpload}
                       className="w-full text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-[#243b55]/10 file:text-[#243b55] hover:file:bg-[#243b55]/20"
-                      {...register("vehicleImage")}
                     />
-                    {errors.vehicleImage && <p className="text-red-500 text-xs">{errors.vehicleImage.message}</p>}
+                    <input type="hidden" {...register("vehicleImage")} />
                   </div>
 
                   <div>
                     <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">VRN</label>
                     <input
-                      type="text"
-                      placeholder="e.g. LHR-1234"
+                      type="number"
+                      placeholder="e.g. 1234"
                       className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-xs bg-white focus:outline-none focus:border-[#243b55] transition"
                       {...register("vrn")}
                     />
@@ -313,20 +373,6 @@ console.log(drivers);
                       ))}
                     </select>
                     {errors.registerCity && <p className="text-red-500 text-xs">{errors.registerCity.message}</p>}
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Assign Driver</label>
-                    <select className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-xs bg-white focus:outline-none focus:border-[#243b55] transition"
-                      {...register("driver")}>
-                      <option value="">Select Driver</option>
-                      {
-                        drivers.map((driver) => (
-                          <option key={driver._id} value={driver?.email}>{driver?.email}</option>
-                        ))
-                      }
-                    </select>
-                    {errors.driver && <p className="text-red-500 text-xs">{errors.driver.message}</p>}
                   </div>
 
                   <div>
@@ -357,10 +403,10 @@ console.log(drivers);
                     <select className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-xs bg-white focus:outline-none focus:border-[#243b55] transition"
                       {...register("department")}>
                       <option value="">Select Department</option>
-                      <option value="ops">Operations</option>
-                      <option value="logs">Logistics</option>
-                      <option value="sales">Sales</option>
-                      <option value="hr">Human Resources</option>
+                      <option value="Operations">Operations</option>
+                      <option value="Logistics">Logistics</option>
+                      <option value="Sales">Sales</option>
+                      <option value="HR">Human Resources</option>
                     </select>
                     {errors.department && <p className="text-red-500 text-xs">{errors.department.message}</p>}
                   </div>
@@ -550,10 +596,10 @@ console.log(drivers);
                     <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Upload Document</label>
                     <input
                       type="file"
+                      onChange={handleDocUpload}
                       className="w-full text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-[#243b55]/10 file:text-[#243b55] hover:file:bg-[#243b55]/20"
-                      {...register("document")}
                     />
-                    {errors.document && <p className="text-red-500 text-xs">{errors.document.message}</p>}
+                    <input type="hidden" {...register("docUpload")} />
                   </div>
 
                   <div>

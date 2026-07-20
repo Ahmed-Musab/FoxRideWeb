@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 
 const vehicleSchema = new mongoose.Schema({
     vehicleImage: {
-        type: String,
+        type: String
     },
     VRN: {
         type: String,
@@ -86,8 +86,7 @@ const vehicleSchema = new mongoose.Schema({
         required: true,
     },
     docUpload: {
-        type: Object,
-        required: true,
+        type: String
     },
     exciseTaxExpiry: {
         type: Date,
@@ -102,8 +101,7 @@ const vehicleSchema = new mongoose.Schema({
         required: true,
     },
     driver: {
-        type: String,
-        required: true
+        type: String
     }
 })
 

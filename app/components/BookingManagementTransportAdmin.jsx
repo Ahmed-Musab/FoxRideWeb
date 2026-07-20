@@ -5,13 +5,12 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import { useState } from "react";
 import { toast } from "react-hot-toast";
-import { 
-  Car, 
-  Calendar, 
-  Clock, 
-  MapPin, 
-  User, 
-  Briefcase, 
+import {
+  Car,
+  Clock,
+  MapPin,
+  User,
+  Briefcase,
   CheckCircle,
   Check
 } from "lucide-react";
@@ -19,6 +18,7 @@ import {
 const BookingManagementTransportAdmin = () => {
   const queryClient = useQueryClient();
   const [selectedVehicles, setSelectedVehicles] = useState({});
+  const [selectedDrivers, setSelectedDrivers] = useState({});
 
   // Fetch approved bookings
   const getApprovedBookings = async () => {
@@ -42,30 +42,30 @@ const BookingManagementTransportAdmin = () => {
     queryFn: getVehicles,
   });
 
-  // Assign vehicle mutation
-  const assignVehicleMutation = useMutation({
-    mutationFn: async ({ bookingID, vehicleVRN }) => {
-      const response = await axios.post('/api/transportAdmin/assignVehicle', { bookingID, vehicleVRN });
+  const getDrivers = async () => {
+    const response = await axios.get("/api/driver/getDrivers");
+    return response?.data?.drivers || [];
+  }
+
+  const { data: drivers = [], isLoading: driversLoading, isError: driversError } = useQuery({
+    queryKey: ["drivers"],
+    queryFn: getDrivers,
+  });
+
+  const updateBookingMutation = useMutation({
+    mutationFn: async ({ bookingID, vehicleVRN, driver }) => {
+      const response = await axios.put('/api/transportAdmin/updateBooking', { bookingID, vehicleVRN, driver });
       return response.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries(["approved-bookings"]);
-      toast.success("Vehicle assigned successfully!");
+      toast.success("Vehicle and driver assigned successfully!");
     },
     onError: (error) => {
       console.log(error);
-      toast.error(error.response?.data?.message || "Failed to assign vehicle");
+      toast.error(error.response?.data?.message || "Failed to assign vehicle and driver");
     }
-  });
-
-  const handleAssign = (bookingID) => {
-    const vehicleVRN = selectedVehicles[bookingID];
-    if (!vehicleVRN) {
-      toast.error("Please select a vehicle first.");
-      return;
-    }
-    assignVehicleMutation.mutate({ bookingID, vehicleVRN });
-  };
+  })
 
   const handleVehicleChange = (bookingID, vrn) => {
     setSelectedVehicles(prev => ({
@@ -73,6 +73,33 @@ const BookingManagementTransportAdmin = () => {
       [bookingID]: vrn
     }));
   };
+
+  const handleDriverChange = (bookingID, driver) => {
+    setSelectedDrivers(prev => ({
+      ...prev,
+      [bookingID]: driver
+    }));
+  };
+
+  const onSubmit = async (bookingID) => {
+    try {
+      const vehicleVRN = selectedVehicles[bookingID];
+      if (!vehicleVRN) {
+        toast.error("Please select a vehicle first.");
+        return;
+      }
+
+      const driver = selectedDrivers[bookingID];
+      if (!driver) {
+        toast.error("Please select a driver first.");
+        return;
+      }
+      updateBookingMutation.mutate({ bookingID, vehicleVRN, driver });
+    }
+    catch (err) {
+      console.log(err);
+    }
+  }
 
   const renderSkeleton = () => (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-pulse">
@@ -100,7 +127,7 @@ const BookingManagementTransportAdmin = () => {
       <aside className="w-64 bg-white border-r border-gray-200 p-6 flex flex-col">
         <Sidebar />
       </aside>
-      
+
       <main className="flex-1 p-8 lg:p-10 max-w-7xl mx-auto w-full">
         {/* Header Section */}
         <div className="border-b border-gray-200 pb-6 mb-8">
@@ -128,25 +155,23 @@ const BookingManagementTransportAdmin = () => {
               const isAssigned = !!booking.assignedVehicle;
 
               return (
-                <div 
-                  key={booking._id} 
+                <div
+                  key={booking._id}
                   className="bg-white border border-gray-200 rounded-2xl p-6 flex flex-col justify-between hover:shadow-lg transition-all duration-300 relative overflow-hidden"
                 >
                   {/* Status Indicator Stripe */}
-                  <div className={`absolute top-0 left-0 right-0 h-1.5 ${
-                    isAssigned ? "bg-emerald-500" : "bg-amber-500"
-                  }`} />
+                  <div className={`absolute top-0 left-0 right-0 h-1.5 ${isAssigned ? "bg-emerald-500" : "bg-amber-500"
+                    }`} />
 
                   <div className="space-y-4 flex-1 flex flex-col justify-between">
                     <div>
                       {/* Card Header & Status Badge */}
                       <div className="flex justify-between items-start gap-3 mt-1 mb-3">
                         <span className="text-[10px] font-bold text-gray-400 uppercase">ID: #{booking._id.slice(-6)}</span>
-                        <span className={`text-[9px] font-extrabold uppercase tracking-wider px-2.5 py-0.5 rounded-full border ${
-                          isAssigned 
-                            ? "bg-emerald-50 border-emerald-100 text-emerald-700" 
-                            : "bg-amber-50 border-amber-100 text-amber-700"
-                        }`}>
+                        <span className={`text-[9px] font-extrabold uppercase tracking-wider px-2.5 py-0.5 rounded-full border ${isAssigned
+                          ? "bg-emerald-50 border-emerald-100 text-emerald-700"
+                          : "bg-amber-50 border-amber-100 text-amber-700"
+                          }`}>
                           {isAssigned ? "Dispatched" : "Unassigned"}
                         </span>
                       </div>
@@ -198,7 +223,7 @@ const BookingManagementTransportAdmin = () => {
                             <label className="block text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-1">
                               Select Fleet Vehicle <span className="text-rose-500">*</span>
                             </label>
-                            <select 
+                            <select
                               className="w-full border border-gray-200 rounded-xl px-3 py-2 text-xs bg-white focus:outline-none focus:border-[#243b55] text-gray-700 font-semibold"
                               value={selectedVehicles[booking._id] || ""}
                               onChange={(e) => handleVehicleChange(booking._id, e.target.value)}
@@ -210,20 +235,50 @@ const BookingManagementTransportAdmin = () => {
                                   <option key={vehicle._id} value={vehicle.VRN}>
                                     {vehicle.make} {vehicle.model} ({vehicle.VRN})
                                   </option>
-                              ))}
+                                ))}
                             </select>
                           </div>
-                          <button 
-                            onClick={() => handleAssign(booking._id)}
-                            disabled={assignVehicleMutation.isPending}
-                            className="w-full flex items-center justify-center gap-1.5 py-2.5 bg-[#243b55] hover:bg-[#243b55]/95 disabled:bg-gray-300 text-white rounded-xl text-xs font-bold shadow-sm transition cursor-pointer"
-                          >
-                            <Check className="w-3.5 h-3.5" />
-                            Dispatch Vehicle
-                          </button>
                         </div>
                       )}
                     </div>
+
+                    {/* Assign Driver */}
+                    <div className="border-t border-gray-100 pt-4 mt-auto">
+                      {isAssigned ? (
+                        <div className="flex items-center gap-2.5 p-3 bg-emerald-50/50 border border-emerald-100 rounded-xl">
+                          <div className="p-2 bg-emerald-100 text-emerald-700 rounded-lg">
+                            <Car className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <p className="text-[9px] uppercase font-bold text-emerald-600 leading-none">Assigned Driver</p>
+                            <p className="font-extrabold text-emerald-800 mt-1">{booking.assignedDriver}</p>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          <div>
+                            <label className="block text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-1">
+                              Select Driver <span className="text-rose-500">*</span>
+                            </label>
+                            <select
+                              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-xs bg-white focus:outline-none focus:border-[#243b55] text-gray-700 font-semibold"
+                              value={selectedDrivers[booking._id] || ""}
+                              onChange={(e) => handleDriverChange(booking._id, e.target.value)}
+                            >
+                              <option value="">Select a Driver</option>
+                              {drivers.map((driver) => (
+                                <option key={driver._id} value={driver.email}>
+                                  {driver.email}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    {!isAssigned && (
+                      <button className="p-2 rounded-lg bg-blue-500 text-white cursor-pointer" onClick={() => onSubmit(booking._id)}>Done</button>
+                    )}
                   </div>
                 </div>
               );
